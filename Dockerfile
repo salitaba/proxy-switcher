@@ -1,67 +1,25 @@
 # hadolint global ignore=DL3008,DL3013,DL4006
-FROM docker.io/python:3.12-slim-bookworm as python-base-stage
-
-ENV \
-  PIP_DISABLE_PIP_VERSION_CHECK=1 \
-  PIP_NO_COLOR=1 \
-  PIP_NO_INPUT=1 \
-  PIP_PROGRESS_BAR=off \
-  PIP_ROOT_USER_ACTION=ignore \
-  PIP_UPGRADE=1 \
-  PYTHONDONTWRITEBYTECODE=1 \
-  PYTHONUNBUFFERED=1
-
-WORKDIR /app
-
-
-FROM python-base-stage as python-build-stage
-
-ENV \
-  POETRY_NO_ANSI=1 \
-  POETRY_NO_CACHE=1 \
-  POETRY_NO_INTERACTION=1
+FROM docker.io/python:3.12-slim-bookworm
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential \
+  && apt-get install -y build-essential \
+  && apt-get install -y libpq-dev \
+  && apt-get install -y gettext \
+  && apt-get -y install cron \
   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
   && rm -rf /var/lib/apt/lists/*
 
-RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
-  pip install poetry poetry-plugin-export
+COPY hello-cron.sh /etc/cron.d/hello-cron
+RUN chmod 0644 /etc/cron.d/hello-cron
+RUN crontab /etc/cron.d/hello-cron
+RUN touch /var/log/cron.log
 
-COPY ./poetry.lock ./pyproject.toml ./
+WORKDIR /usr/src/app
 
-RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
-  poetry export --without-hashes --only=main --extras=non-termux | \
-  pip wheel --wheel-dir /usr/src/app/wheels -r /dev/stdin
-
-
-FROM python-base-stage as python-run-stage
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends tini \
-  && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
-  && rm -rf /var/lib/apt/lists/*
-
-COPY --from=python-build-stage /usr/src/app/wheels /wheels/
-
-RUN pip install --no-index --find-links /wheels/ /wheels/* \
-  && rm -rf /wheels/
-
-ARG GID UID
-
-# hadolint ignore=SC3028
-RUN groupadd --gid "${GID}" --system app \
-  && useradd --gid app --no-log-init --create-home --system --uid "${UID}" app \
-  && mkdir -p /home/app/.cache/proxy_scraper_checker \
-  && chown app:app /home/app/.cache/proxy_scraper_checker
-
-ENV IS_DOCKER=1
+COPY ./requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install -U --disable-pip-version-check .[non-termux]w
 
 COPY . .
-
-USER app
-
-ENTRYPOINT ["tini", "--"]
-
-CMD ["python", "-m", "proxy_scraper_checker"]
+RUN chmod +x /usr/src/app/entrypoint.sh
+CMD ["/usr/src/app/entrypoint.sh"]

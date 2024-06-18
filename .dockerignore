@@ -1,4 +1,1 @@
-**
-!proxy_scraper_checker/**/*.py
-!poetry.lock
-!pyproject.toml
+
