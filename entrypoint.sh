@@ -4,6 +4,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+python3 -m pip install -U --disable-pip-version-check .[non-termux]
 python3 -m proxy_scraper_checker
 cron
 python ./proxy/manage.py migrate
