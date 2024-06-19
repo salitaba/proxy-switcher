@@ -39,9 +39,12 @@ class ProxySwitcher:
 class ProxyView(View):
 
     def get(self, request, *args, **kwargs):
-        target_url = request.COOKIES['target_url']
-        response = ProxySwitcher.call_request(target_url)
-        headers = {"Location": response.headers.get("Location")} if response.headers.get("Location") else {}
-        if response.headers.get("Content-Type"):
-            headers["Content-Type"] = response.headers.get("Content-Type")
-        return HttpResponse(response.content, status=response.status_code, headers=headers)
+        target_url = request.COOKIES.get('target_url', None)
+        if target_url:
+            response = ProxySwitcher.call_request(target_url)
+            headers = {"Location": response.headers.get("Location")} if response.headers.get("Location") else {}
+            if response.headers.get("Content-Type"):
+                headers["Content-Type"] = response.headers.get("Content-Type")
+            return HttpResponse(response.content, status=response.status_code, headers=headers)
+        else:
+            return HttpResponse("Set target_url in cookie")
