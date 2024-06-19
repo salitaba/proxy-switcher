@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-lh)uh406-qw08w3836@z1hab9afo@3%e(0w4^1-!@zxzawp+w=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [".darkube.app", ".hsvc.ir", ".sahmeto.com", "127.0.0.1"]
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
